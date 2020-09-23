@@ -13,9 +13,9 @@ timeMax = dt*(nt-1);
 %% Make synthetic data
 % linear layers of known slope. n^4 velocity profile
 z = 0:dz:depth;
-s = 0:slopeMax/(n-1):slopeMax; %Linear change in slope
+% s = 0:slopeMax/(n-1):slopeMax; %Linear change in slope
 % s = -1*(0:slopeMax/(n-1):slopeMax); %Linear change in slope
-% s = slopeMax*(sin(0:2*pi/(n-1):2*pi)) + slopeMax/100*randn(size(z)); %Sine changes in slope
+s = slopeMax*(sin(0:2*pi/(n-1):2*pi)) + slopeMax/100*randn(size(z)); %Sine changes in slope
 v = velMax*(z/depth).^(4) + velMax/100*randn(size(z));
 t = (0:dt:timeMax)';
 
@@ -29,6 +29,9 @@ x = cos(dPhi) + 1i*sin(dPhi) + .1*(randn(size(dPhi)) + 1i*randn(size(dPhi)));
 
 %% Solve for slope
 [s_star, m2_s] = fitSlope(x,z,t,slopeMax,v,dr); 
+
+%% Solve for slopeVelocity
+[sv_star, m3_s] = fitSV(x,z,t,slopeMax,velMax,dr); 
 
 %% Plot it UP
 figure(1)
@@ -78,7 +81,19 @@ clf
 plot(abs(s),z,'--','color',rgb('black'))
 hold on
 plot(s_star,z,'s-','color',rgb('lilac'),'lineWidth',2)
-xlabel('slope of layer')
+xlabel('Slope of layer')
+ylabel('Depth')
+set(gca, 'YDir','reverse')
+set(gca, 'YDir','reverse')
+
+%% Plot SV product
+xx = velMax * t;
+figure(4)
+clf
+plot(abs(s.*v),z,'--','color',rgb('black'))
+hold on
+plot(sv_star,z,'s-','color',rgb('dark rose'),'lineWidth',2)
+xlabel('Slope velocity product')
 ylabel('Depth')
 set(gca, 'YDir','reverse')
 set(gca, 'YDir','reverse')
