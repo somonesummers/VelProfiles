@@ -7,8 +7,8 @@ slopeMax = 1e-1; % [ ] Max slope, assumed to be at bed
 dr = .3; %[m] Rough Range resolution (from radar processsing)
 n = 100; %[ ] number of modeling depth bins
 dz = depth/(n - 1); %[m] size of model depth bins
-dt = 24*3600/2; %[s] sample freq
-nt = 365*3; %must be odd
+dt = 24*3600/2; %[s] sample period
+nt = 365*1; %must be odd
 timeMax = dt*(nt-1);
 %% Make synthetic data
 % linear layers of known slope. n^4 velocity profile
@@ -32,7 +32,7 @@ x = cos(dPhi) + 1i*sin(dPhi) + .1*(randn(size(dPhi)) + 1i*randn(size(dPhi)));
 
 %% Solve for slopeVelocity
 [sv_star, m3_s] = fitSV(x,z,t,slopeMax,velMax,dr); 
-
+[sv_star_2, m4_s] = fitSV(x,z,t,slopeMax,velMax,dr,m3_s); 
 %% Plot it UP
 figure(1)
 clf
