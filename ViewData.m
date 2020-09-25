@@ -20,7 +20,7 @@ dr = Rcoarse(2)-Rcoarse(1); %TODO, correct this value
 
 [sv_star, m3_s] = fitSV(x',z,t,slopeMax,velMax,dr);
 %%
-[sv_star_2, m4_s] = fitSV_2(x',z,t,slopeMax,velMax,dr,movmean(m3_s(2,:),250)); 
+[sv_star_2, m4_s] = fitSV_2(x',z,t,slopeMax,velMax,dr,movmean(m3_s(1,:),250)); 
 % Plotting
 figure(1)
 clf
