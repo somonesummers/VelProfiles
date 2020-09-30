@@ -15,7 +15,7 @@ function [s, m2] = fitSlope(x, z, t, sMax, v, dr)
         yu = max(yy);
         yl = min(yy);
         yr = (yu-yl)/2;                               % Range of y
-        yz = movmean(yy-yu+(yr),floor(length(yy)/50));
+        yz = movmean(yy-yu+(yr),floor(length(yy)/10));
         zx = xx(yz .* circshift(yz,[1 0]) <= 0);     % Find zero-crossings
         % Estimate period to set initalization for fminsearch, manually
         % enlongate estimated period for small n cases
