@@ -2,6 +2,7 @@
 clear
 %% Input parameters
 depth = 1e3; % Depth of Domain[m]
+v_zb = 1.5/(3600*24*365); % [m/s] vertical speed at bed
 velMax = 50/(3600*24*365); % [m/s] Max Speed
 slopeMax = 1e-1; % [ ] Max slope, assumed to be at bed 
 dr = .3; %[m] wavelength of system
@@ -13,29 +14,31 @@ timeMax = dt*(nt-1);
 %% Make synthetic data
 % linear layers of known slope. n^4 velocity profile
 z = 0:dz:depth;
-s = slopeMax/1000:slopeMax/(n):slopeMax; %Linear change in slope
+v_z = z/depth*v_zb;
+% s = .05*ones(size(z));
+s = slopeMax/100:slopeMax/(n):slopeMax; %Linear change in slope
 % s = slopeMax:-slopeMax/(n):(slopeMax/1000); %Linear change in slope
 % s = slopeMax*(sin(0:2*pi/(n-1):2*pi)) + slopeMax/100*randn(size(z)); %Sine changes in slope
 s_clean = s;
-s = s + slopeMax/100*randn(size(z));
+% s = s + slopeMax/100*randn(size(z));
 v_clean = velMax*(z/depth).^(4);
 v = v_clean + velMax/100*randn(size(z));
 t = (0:dt:timeMax)';
 
 phi = rand(size(v));
-dPhi = 2*pi * s .* v ./ dr .* t + 2*pi*phi;
+dPhi = 2*pi * (s .* v  + v_z)./ dr .* t + 2*pi*phi;
 x_clean = cos(dPhi) + 1i*sin(dPhi);
 x = cos(dPhi) + 1i*sin(dPhi) + .2*(randn(size(dPhi)) + 1i*randn(size(dPhi)));
 
 %% Solve for velocity
-[v_star, m2_v] = fitVelocity(x,z,t,s,velMax,dr);
+[v_star, m2_v] = fitVelocity(x,z,t,s,velMax + (v_zb),dr);
 [v_star2, m2_v2] = fitVelocity_2(x,z,t,s,velMax,dr,m2_v(1,:));
 
 %% Solve for slope
 [s_star, m2_s] = fitSlope(x,z,t,slopeMax,v,dr); 
 
 %% Solve for slopeVelocity
-[sv_star, m3_s, F1] = fitSV(x,z,t,slopeMax,velMax,dr); 
+[sv_star, m3_s, F1] = fitSV(x,z,t,slopeMax,velMax,dr,v_zb); 
 [sv_star_2, m4_s, F2] = fitSV_2(x,z,t,slopeMax,velMax,dr,movmean(m3_s(1,:),floor(n/5))); 
 %% Plot it UP
 
@@ -71,61 +74,100 @@ setFontSize(16)
 % savePng('fitn')
 % 
 %% Plot slopes
-figure(3)
-clf
-plot(abs(s_clean),z,'--','color',rgb('black'),'lineWidth',3)
-xlabel('Slope of layer')
-ylabel('Depth')
-set(gca, 'YDir','reverse')
-set(gca, 'YDir','reverse')
-setFontSize(16)
-% savePng('figs/slope1')
-hold on
-plot(abs(s),z,'.','color',rgb('gray'),'markersize',15)
-% savePng('figs/slope2')
-plot(s_star,z,'.','color',rgb('lilac'),'markersize',15)
-plot(movmean(s_star,floor(n/10)),z,'--','color',rgb('lilac'),'lineWidth',3)
-% savePng('figs/slope3')
+% figure(3)
+% clf
+% plot(abs(s_clean),z,'--','color',rgb('black'),'lineWidth',3)
+% xlabel('Slope of layer')
+% ylabel('Depth')
+% set(gca, 'YDir','reverse')
+% setFontSize(16)
+% % savePng('figs/slope1')
+% hold on
+% plot(abs(s),z,'.','color',rgb('gray'),'markersize',15)
+% % savePng('figs/slope2')
+% plot(s_star,z,'.','color',rgb('lilac'),'markersize',15)
+% plot(movmean(s_star,floor(n/10)),z,'--','color',rgb('lilac'),'lineWidth',3)
+% % savePng('figs/slope3')
 
 %% Plot Velocities
-figure(4)
-clf
-plot(v,z,'.','color',rgb('gray'),'markerSize',15)
-xlabel('Velocity')
-xlim([0 velMax])
-ylabel('Depth')
-set(gca, 'YDir','reverse')
-set(gca, 'YDir','reverse')
-setFontSize(16)
-% savePng('figs/vel1')
-hold on
-plot(v_clean,z,'--','color',rgb('black'),'linewidth',3);
-% savePng('figs/vel2')
-plot(v_star,z,'.','color',rgb('burnt orange'),'markerSize',15)
-plot(movmean(v_star,floor(n/10)),z,'--','color',rgb('burnt orange'),'lineWidth',3)
+
+% G = [z' z.^4'];
+% m_v = G\(v_star');
+% 
+% m_sv = G\((sv_star./s)');
+% 
+% 
+% figure(4)
+% clf
+% plot(v,z,'.','color',rgb('gray'),'markerSize',15)
+% xlabel('Velocity')
+% xlim([0 velMax])
+% ylabel('Depth')
+% set(gca, 'YDir','reverse')
+% setFontSize(16)
+% % savePng('figs/vel1')
+% hold on
+% plot(v_clean,z,'--','color',rgb('black'),'linewidth',4);
+% % savePng('figs/vel2')
+% % plot(v_star,z,'.','color',rgb('soft green'),'markerSize',15)
+% % plot(movmean(v_star,floor(n/10)),z,'--','color',rgb('dark green'),'lineWidth',4)
+% 
+% plot(sv_star_2./s,z,'.','color',rgb('baby blue'),'MarkerSize',10)
+% % plot(movmean(sv_star_2,floor(n/10))./s,z,'--','color',rgb('blue'),'lineWidth',4)
+% 
+% % plot(G*m_v,z,'--','color',rgb('green'),'lineWidth',4)
+% % plot(m_v(1)*G(:,1),z,':','color',rgb('lime'),'lineWidth',4)
+% % plot(m_v(2)*G(:,2),z,':','color',rgb('dark lime'),'lineWidth',4)
+% plot(G*m_sv,z,'--','color',rgb('turquoise'),'lineWidth',4)
+% plot(m_sv(1)*G(:,1),z,':','color',rgb('light aqua'),'lineWidth',4)
+% plot(m_sv(2)*G(:,2),z,':','color',rgb('aqua'),'lineWidth',4)
+% legend
 % savePng('figs/vel3')
 
 
 
 %% Plot SV product
+
+G = [z' (z.^4 .* (s))'];
+
+m_sv = G\((sv_star_2)');
+
+fit = @(b,zz,ss)  abs(b(1)*zz + b(2) * zz.^4 .* ss );    % Function to fit
+fcn = @(b) sum((fit(b,z,s) - sv_star_2).^2);
+OPTIONS = optimset('Display','iter','TolX',1e-12);
+m_fit = fminsearch(fcn, [1e-8 -1e8], OPTIONS);
 figure(5)
 clf
-plot(abs(s_clean.*v_clean),z,'--','color',rgb('black'),'lineWidth',5)
+plot(abs(s_clean.*v_clean+v_z),z,'--','color',rgb('dark gray'),'lineWidth',5,...
+    'DisplayName', 'Total Signal')
 xlabel('Slope velocity product')
 ylabel('Depth')
 set(gca, 'YDir','reverse')
-set(gca, 'YDir','reverse')
-xlim ([0 max(abs(s_clean.*v_clean))])
+legend
+% xlim ([0 max(abs(s_clean.*v_clean+v_z))])
 setFontSize(16)
 % savePng('figs/sv1')
 hold on
-plot(abs(s.*v),z,'.','color',rgb('gray'),'MarkerSize',25)
 % savePng('figs/sv2')
-plot(sv_star,z,'.','color',rgb('light rose'),'MarkerSize',25)
-plot(movmean(sv_star,floor(n/10)),z,'--','color',rgb('dark rose'),'lineWidth',5)
+plot(sv_star,z,'.','color',rgb('light rose'),'MarkerSize',25,'DisplayName', 'Data 1')
+% plot(movmean(sv_star,floor(n/10)),z,'--','color',rgb('dark rose'),'lineWidth',5,...
+%     'DisplayName', 'Data ')
 % savePng('figs/sv3')
-plot(sv_star_2,z,'.','color',rgb('baby blue'),'MarkerSize',25)
-plot(movmean(sv_star_2,floor(n/10)),z,'--','color',rgb('blue'),'lineWidth',5)
+plot(sv_star_2,z,'.','color',rgb('baby blue'),'MarkerSize',25,'DisplayName', 'Data 2')
+% plot(movmean(sv_star_2,floor(n/10)),z,'--','color',rgb('blue'),'lineWidth',5)
+
+plot(v_z,z,':','color',rgb('light gray'),'lineWidth',4,'DisplayName', 'V_z')
+plot(v_clean.*s,z,'--','color',rgb('gray'),'lineWidth',4, 'DisplayName', 'V_x * S')
+
+plot(G*m_sv,z,'-.','color',rgb('turquoise'),'lineWidth',4,'DisplayName', 'Total Fit')
+plot(m_sv(1)*G(:,1),z,':','color',rgb('dark mint'),'lineWidth',4,'DisplayName', 'Fit V_z')
+plot(m_sv(2)*G(:,2),z,'--','color',rgb('mint'),'lineWidth',4,'DisplayName', 'Fit V_x * S')
+
+plot(fit(m_fit,z,s),z,'-.','color',rgb('red'),'lineWidth',4,'DisplayName', 'Total Fit')
+plot(m_fit(1)*G(:,1),z,':','color',rgb('light red'),'lineWidth',4,'DisplayName', 'Fit V_z')
+plot(m_fit(2)*G(:,2),z,'--','color',rgb('crimson'),'lineWidth',4,'DisplayName', 'Fit V_x * S')
+
+
 % savePng('figs/sv4')
 
 figure(6)

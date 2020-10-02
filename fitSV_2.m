@@ -18,7 +18,7 @@ function [varargout] = fitSV_2(x, z, t, sMax, vMax, dr, m2_p)
         fit = @(b,x)  1 .* (sin(2 * pi * xx * b(1) + 2 * pi * b(2))) + 0;    % Function to fit
         fcn = @(b) sum((fit(b,xx) - yy).^2);
         OPTIONS = optimset('Display','none');% Least-Squares cost function
-        buff = 5; %buffer on bounded search
+        buff = 4; %buffer on bounded search
         % Seed 3 different starting phases to find global min
         [m_0  , fval_0  ] = fminsearchbnd(fcn, [m2_p(i);   0   ],[1/buff*m2_p(i) -2*pi],[buff*m2_p(i) 2*pi]);
         [m_pi , fval_pi ] = fminsearchbnd(fcn, [m2_p(i);   pi/2],[1/buff*m2_p(i) -2*pi],[buff*m2_p(i) 2*pi]);

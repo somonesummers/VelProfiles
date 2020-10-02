@@ -10,12 +10,18 @@ bed = 2*1500+bed;
 
 in = 1:floor(bed/15):bed;
 buff = 3;
-dwnSample = 1;
-x = RawImage(1:dwnSample:bed,:)./mean(sqrt(2)*abs(RawImage(1:dwnSample:bed,:)),2);
+dwnSample = 5;
+x = RawImage(1:dwnSample:bed,:)./(sqrt(2*mean(abs(RawImage(1:dwnSample:bed,:)).^2,2)));
+x_unscaled = RawImage(1:dwnSample:bed,:);
+
+
+
 x_clean = movmean(x,buff,2);
 z = Rcoarse(1:dwnSample:bed);
 n = size(z,2);
 t = timeInDays*24*3600;
+v_zb = 1.5/(3600*24*365); % [m/s] vertical speed at bed
+v_z = z*v_zb/(z(end));
 slopeMax = .01; %Max Slope
 velMax = 50/(3600*24*365); % [m/s] Max Speed
 dr = 284e-3; %wavelength in medium
@@ -32,11 +38,18 @@ sv_star_3 = sv_star_3 * 3.154e7;
 %% Plotting
 figure(1)
 clf
-plot(movmean(real(RawImage(in(1),:)),buff)/mean(sqrt(2)*abs(RawImage(in(1),:))))
-hold on
-for i = 2:length(in)
-    plot(movmean(real(RawImage(in(i),:)),buff)/mean(sqrt(2)*abs(RawImage(in(i),:))))
-end
+plot(log10(sqrt(mean(real(x_unscaled).^2,2))),z)
+set(gca, 'YDir','reverse')
+xlabel('Log RMS Voltage')
+setFontSize(16)
+% 
+% figure(1)
+% clf
+% plot(movmean(real(RawImage(in(1),:)),buff)/mean(sqrt(2)*abs(RawImage(in(1),:))))
+% hold on
+% for i = 2:length(in)
+%     plot(movmean(real(RawImage(in(i),:)),buff)/mean(sqrt(2)*abs(RawImage(in(i),:))))
+% end
 
 figure(2)
 clf
@@ -72,7 +85,7 @@ for i = 1:nfigs
     hold off
 end
 
-%%
+% %%
 figure(4)
 clf
 plot(sv_star,z,'.','color',rgb('light rose'),'MarkerSize',10,'HandleVisibility','off')
@@ -80,7 +93,6 @@ setFontSize(16)
 xlim([0 2])
 xlabel('Slope velocity product [rad*m/yr]')
 ylabel('Depth')
-set(gca, 'YDir','reverse')
 set(gca, 'YDir','reverse')
 hold on
 % savePng('Willans1')
@@ -93,7 +105,8 @@ legend('1st Fit','2nd Fit')
 % savePng('Willans3')
 plot(sv_star_3,z,'.','color',rgb('baby blue'),'MarkerSize',10,'HandleVisibility','off')
 plot(movmean(sv_star_3,floor(n/20)),z,'--','color',rgb('blue'),'lineWidth',4)
-legend('1st Fit','2nd Fit','3rd fit')
+plot(v_z*3.154e7,z,'-.','color',rgb('gray'),'lineWidth',4);
+legend('1st Fit','2nd Fit','3rd fit','V_z est')
 % savePng('Willans4')
 hold off
 
@@ -128,7 +141,6 @@ xlim([0 2])
 xlabel('Slope velocity product [rad*m/yr]')
 ylabel('Depth')
 set(gca, 'YDir','reverse')
-set(gca, 'YDir','reverse')
 hold on
 % savePng('Willans1')
 legend('1st Fit')
@@ -140,7 +152,30 @@ plot(sv_star_3(F3<movmean(F3,floor(n/20))),z(F3<movmean(F3,floor(n/20))),'.','co
 ln = length(sv_star_3(F3<movmean(F3,floor(n/20))));
 plot(movmean(sv_star_3(F3<movmean(F3,floor(n/20))),floor(ln/20)),z(F3<movmean(F3,floor(n/20))),'--',...
     'color',rgb('blue'),'lineWidth',4,'HandleVisibility','off')
+plot(v_z*3.154e7,z,'-.','color',rgb('gray'),'lineWidth',4,'HandleVisibility','off');
 legend('1st Fit','2nd Fit','3rd fit')
 title('Moving average with worst 50% fits excluded')
 savePng('Willans7')
 hold off
+
+% %% Fitting results?
+
+sv_filt = sv_star_3(F3<movmean(F3,floor(n/20)));
+z_filt = z(F3<movmean(F3,floor(n/20)));
+
+% fit to sv = m1 z + m2 z^4
+G = [z_filt' z_filt.^4'];
+m_filt = G\(sv_filt');
+figure(7)
+clf
+plot(sv_filt,z_filt,'.','color',rgb('baby blue'),'MarkerSize',10)
+hold on
+plot(G*m_filt,z_filt,'--','color',rgb('dark green'),'lineWidth',4)
+plot(m_filt(1)*z_filt,z_filt,'--','color',rgb('lime'),'lineWidth',4)
+plot(m_filt(2)*z_filt.^4,z_filt,'--','color',rgb('dark lime'),'lineWidth',4)
+legend('Data','Total Fit (x + x^4)','Vertical velocity (x)','Horz velSlope (x^5)')
+xlabel('Slope velocity product [rad*m/yr]')
+ylabel('Depth')
+set(gca, 'YDir','reverse')
+setFontSize(16)
+
