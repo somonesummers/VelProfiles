@@ -1,5 +1,5 @@
 function [varargout] = fitSV(varargin)
-    % [sv, m2] = fitVelocity(x, z, t, vMax, sMax, dr) solves for velocity profile
+    % [sv, m2] = fitVelocity(x, z, t, vMax, sMax, dr) solves for SlopeVelocity profile
     % of a region of known layer slopes (s(z)). velocity is assumed to be
     % roughly monotonically increasing with depth, with max velocity at the
     % bed. Estimated max velocity is an input vMax. Returns Vels and sin

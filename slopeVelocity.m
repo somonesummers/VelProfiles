@@ -1,12 +1,13 @@
 % Starting sandbox for making synthetic data set of known slope and speeds.
 clear
+% rng(12)
 %% Input parameters
 depth = 1e3; % Depth of Domain[m]
 v_zb = 1.5/(3600*24*365); % [m/s] vertical speed at bed
 velMax = 50/(3600*24*365); % [m/s] Max Speed
 slopeMax = 1e-1; % [ ] Max slope, assumed to be at bed 
 dr = .3; %[m] wavelength of system
-n = 100; %[ ] number of modeling depth bins
+n = 500; %[ ] number of modeling depth bins
 dz = depth/(n - 1); %[m] size of model depth bins
 dt = 24*3600/2; %[s] sample period
 nt = 365*1; %must be odd
@@ -16,9 +17,10 @@ timeMax = dt*(nt-1);
 z = 0:dz:depth;
 v_z = z/depth*v_zb;
 % s = .05*ones(size(z));
-s = slopeMax/100:slopeMax/(n):slopeMax; %Linear change in slope
+% s = slopeMax/100:slopeMax/(n):slopeMax; %Linear change in slope
 % s = slopeMax:-slopeMax/(n):(slopeMax/1000); %Linear change in slope
 % s = slopeMax*(sin(0:2*pi/(n-1):2*pi)) + slopeMax/100*randn(size(z)); %Sine changes in slope
+s = cumsum(randn(size(z))*10e-2/sqrt(n)); %Random walk of slope;
 s_clean = s;
 % s = s + slopeMax/100*randn(size(z));
 v_clean = velMax*(z/depth).^(4);
@@ -31,16 +33,32 @@ x_clean = cos(dPhi) + 1i*sin(dPhi);
 x = cos(dPhi) + 1i*sin(dPhi) + .2*(randn(size(dPhi)) + 1i*randn(size(dPhi)));
 
 %% Solve for velocity
-[v_star, m2_v] = fitVelocity(x,z,t,s,velMax + (v_zb),dr);
-[v_star2, m2_v2] = fitVelocity_2(x,z,t,s,velMax,dr,m2_v(1,:));
-
+% [v_star, m2_v] = fitVelocity(x,z,t,s,velMax + (v_zb),dr);
+% [v_star2, m2_v2] = fitVelocity_2(x,z,t,s,velMax,dr,m2_v(1,:));
+% 
 %% Solve for slope
-[s_star, m2_s] = fitSlope(x,z,t,slopeMax,v,dr); 
+% [s_star, m2_s] = fitSlope(x,z,t,slopeMax,v,dr); 
 
 %% Solve for slopeVelocity
 [sv_star, m3_s, F1] = fitSV(x,z,t,slopeMax,velMax,dr,v_zb); 
-[sv_star_2, m4_s, F2] = fitSV_2(x,z,t,slopeMax,velMax,dr,movmean(m3_s(1,:),floor(n/5))); 
+
+for i = 1:11
+    [sv_star_2, m4_s, F2] = fitSV_2(x,z,t,slopeMax,velMax,dr,movmean(m3_s(1,:),floor(n/5))); 
+    disp("Loop " + i + ": res " + abs((sum(F2) - sum(F1))/sum(F1)));
+    if(abs((sum(F2) - sum(F1))/sum(F1)) < 2e-2 || i == 10)
+        disp("Broke on loop " + i + " with res " + abs((sum(F2) - sum(F1))/sum(F1)));
+        break;
+    end
+    F1 = F2;
+    m3_s = m4_s;
+end
 %% Plot it UP
+figure(1)
+clf
+plot(s,z)
+xlabel('Slope')
+ylabel('Depth')
+set(gca, 'YDir','reverse')
 
 figure(2)
 clf
@@ -128,17 +146,38 @@ setFontSize(16)
 
 %% Plot SV product
 
-G = [z' (z.^4 .* (s))'];
+%Fit full data set
+slopeSmooth = n/10;
+s_smooth = movmean(s,slopeSmooth);
+G    = [z' (z.^4 .* (s_smooth))'];
+% m_sv = G\((sv_star_2)');
 
-m_sv = G\((sv_star_2)');
+fit = @(b,zz,ss)  abs(b(1)*zz + b(2) * zz.^4 .* ss);    % Function to fit
+fcn = @(b) sum((fit(b,z,s_smooth) - sv_star_2).^2);
+OPTIONS = optimset('Display','none','TolX',1e-12);
+m_fit = fminsearchbnd(fcn, [1e-8 -1e-8], [],[], OPTIONS);
+if(m_fit(1) < 0)
+    m_fit = m_fit*(-1);
+end
 
-fit = @(b,zz,ss)  abs(b(1)*zz + b(2) * zz.^4 .* ss );    % Function to fit
-fcn = @(b) sum((fit(b,z,s) - sv_star_2).^2);
-OPTIONS = optimset('Display','iter','TolX',1e-12);
-m_fit = fminsearch(fcn, [1e-8 -1e8], OPTIONS);
+% Echo Free processing
+ef_i = floor(n*4/6);
+G_ef = G(1:ef_i,:);
+
+fit_ef = @(b,zz,ss)  abs(b(1)*zz + b(2) * zz.^4 .* ss);    % Function to fit
+fcn_ef = @(b) sum((fit_ef(b,z(1:ef_i),s_smooth(1:ef_i)) ...
+            - sv_star_2(1:ef_i)).^2);
+OPTIONS = optimset('Display','none','TolX',1e-12);
+m_fit_ef = fminsearchbnd(fcn_ef, [1e-8 -1e-8], [],[], OPTIONS);
+if(m_fit_ef(1) < 0)
+    m_fit_ef = m_fit_ef*(-1);
+end
+
+
+
 figure(5)
 clf
-plot(abs(s_clean.*v_clean+v_z),z,'--','color',rgb('dark gray'),'lineWidth',5,...
+plot(abs(s_clean.*v_clean+v_z),z,'-','color',rgb('dark gray'),'lineWidth',5,...
     'DisplayName', 'Total Signal')
 xlabel('Slope velocity product')
 ylabel('Depth')
@@ -156,17 +195,20 @@ plot(sv_star,z,'.','color',rgb('light rose'),'MarkerSize',25,'DisplayName', 'Dat
 plot(sv_star_2,z,'.','color',rgb('baby blue'),'MarkerSize',25,'DisplayName', 'Data 2')
 % plot(movmean(sv_star_2,floor(n/10)),z,'--','color',rgb('blue'),'lineWidth',5)
 
-plot(v_z,z,':','color',rgb('light gray'),'lineWidth',4,'DisplayName', 'V_z')
-plot(v_clean.*s,z,'--','color',rgb('gray'),'lineWidth',4, 'DisplayName', 'V_x * S')
+plot(v_z,z,'-','color',rgb('light gray'),'lineWidth',4,'DisplayName', 'V_z')
+plot(v_clean.*s,z,'-','color',rgb('gray'),'lineWidth',4, 'DisplayName', 'V_x * S')
 
-plot(G*m_sv,z,'-.','color',rgb('turquoise'),'lineWidth',4,'DisplayName', 'Total Fit')
-plot(m_sv(1)*G(:,1),z,':','color',rgb('dark mint'),'lineWidth',4,'DisplayName', 'Fit V_z')
-plot(m_sv(2)*G(:,2),z,'--','color',rgb('mint'),'lineWidth',4,'DisplayName', 'Fit V_x * S')
+% plot(G*m_sv,z,'-.','color',rgb('turquoise'),'lineWidth',4,'DisplayName', 'Total Fit')
+% plot(m_sv(1)*G(:,1),z,':','color',rgb('dark mint'),'lineWidth',4,'DisplayName', 'Fit V_z')
+% plot(m_sv(2)*G(:,2),z,'--','color',rgb('mint'),'lineWidth',4,'DisplayName', 'Fit V_x * S')
 
-plot(fit(m_fit,z,s),z,'-.','color',rgb('red'),'lineWidth',4,'DisplayName', 'Total Fit')
+plot(fit(m_fit,z,s_smooth),z,'-.','color',rgb('red'),'lineWidth',4,'DisplayName', 'Total Fit')
 plot(m_fit(1)*G(:,1),z,':','color',rgb('light red'),'lineWidth',4,'DisplayName', 'Fit V_z')
 plot(m_fit(2)*G(:,2),z,'--','color',rgb('crimson'),'lineWidth',4,'DisplayName', 'Fit V_x * S')
 
+% plot(fit_ef(m_fit_ef,z,s_smooth),z,'-.','color',rgb('turquoise'),'lineWidth',4,'DisplayName', 'Total Fit Echo Free')
+% plot(m_fit_ef(1)*G_ef(:,1),z(1:ef_i),':','color',rgb('dark mint'),'lineWidth',4,'DisplayName', 'Fit V_z Echo Free')
+% plot(m_fit_ef(2)*G_ef(:,2),z(1:ef_i),'--','color',rgb('mint'),'lineWidth',4,'DisplayName', 'Fit V_x * S Echo Free')
 
 % savePng('figs/sv4')
 
