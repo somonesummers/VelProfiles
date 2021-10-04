@@ -1,3 +1,4 @@
+*.ai
 *.m~
 .DS_Store
 *.mat
