@@ -8,8 +8,9 @@ a script for running a large batch of randomly generated cases (VS_BatchRunner.m
 
 fit*.m files are functions used in the fitting scheme. 
 
-ViewData.m is used to display field aPRES data that was first processed using the
-methods cited in the paper. 
+ViewData.m is used to display field aPRES data that was first processed 
+using the methods cited in the paper. This file is locally called 'ImageP2.mat'
+but is not included in this repo. 
 
 Questions can be sent to the corresponding author:
 Paul T. Summers
