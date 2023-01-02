@@ -1,6 +1,10 @@
-% Main file to run for IGARRS Paper
-% clear
+% Main file to run for IGARSS Paper
+% Creates a synthetic data set of layer motion over time based on vertical
+% velocity and layer motion due to horizontal motion of sloped layers. 
+
+clear
 rng(125) %125 for fig in paper
+
 %% Input parameters
 depth = 1e3; % Depth of Domain[m]
 v_zb = 1.5/(3600*24*365); % [m/s] vertical speed at bed
